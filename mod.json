@@ -1,0 +1,28 @@
+{
+  "geode": "5.11.2",
+  "gd": {
+    "android": "2.2081"
+  },
+  "version": "v1.0.1-android-source",
+  "id": "ai.predictivebuffer",
+  "name": "Predictive Input Buffer",
+  "developer": "lilWC + Android port patch",
+  "description": "Experimental Android source port of trajectory-based input buffering.",
+  "settings": {
+    "buffer-preset": {
+      "name": "Buffer preset",
+      "description": "0=2/2 ticks, 1=4/4, 2=8/8, 3=16/8, 4=Off. Change in Geode settings.",
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 4,
+      "control": {
+        "arrows": true,
+        "arrow-step": 1,
+        "slider": true,
+        "slider-step": 1,
+        "input": false
+      }
+    }
+  }
+}
