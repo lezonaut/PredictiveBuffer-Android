@@ -6,7 +6,7 @@
   "version": "v1.0.1",
   "id": "ai.predictivebuffer",
   "name": "Predictive Input Buffer",
-  "developer": "lilWC + Android port patch",
+  "developer": "lilWC",
   "description": "Experimental Android source port of trajectory-based input buffering.",
   "settings": {
     "buffer-preset": {
