@@ -300,13 +300,12 @@ public:
         // 2. If an input is currently waiting in the buffer and the user quickly releases
         // (or re-presses) 1-2 ticks later, queue it for the next tick so fast taps are never eaten
         if (m_waitTicks >= 0) {
-            if (push != m_bufferedPush) {
-                m_queuedOpposite = true;
-            } else {
-                m_queuedOpposite = false;
-            }
-            m_ticksSinceLastInput = 0;
-            return false;
+    // Keep the delayed action, but remember only whether the physical state
+    // has changed away from it. onPlayerUpdate reconciles to the latest
+    // physical state after the countdown, avoiding stale queued transitions.
+    m_queuedOpposite = (push != m_bufferedPush);
+    m_ticksSinceLastInput = 0;
+    return false;
         }
 
         // If a queued opposite action is due to fire on the next tick (m_waitTicks == -2)
@@ -409,52 +408,63 @@ public:
         m_gameHolding = push;
         return true;
     }
+void onPlayerUpdate(PlayerObject* player) {
+    PlayLayer* pl = PlayLayer::get();
+    if (!pl || player != pl->m_player1) return;
 
-    void onPlayerUpdate(PlayerObject* player) {
-        PlayLayer* pl = PlayLayer::get();
-        if (!pl || player != pl->m_player1) return;
+    if (auto mod = geode::Mod::get()) {
+        auto preset = mod->getSettingValue<int64_t>("buffer-preset");
+        applyPreset(static_cast<int>(preset));
+    }
+    if (!m_enabled) return;
 
-        // Read the selected preset from Geode settings (Android touch UI).
-        // Keep this guarded because settings may not be available during teardown.
-        if (auto mod = geode::Mod::get()) {
-            auto preset = mod->getSettingValue<int64_t>("buffer-preset");
-            applyPreset(static_cast<int>(preset));
+    if (m_ticksSinceLastInput < 999) {
+        m_ticksSinceLastInput++;
+    }
+
+    if (player->m_isShip ||
+        (pl->m_gameState.m_isDualMode && pl->m_player2 && pl->m_player2->m_isShip)) {
+        m_waitTicks = -1;
+        m_queuedOpposite = false;
+        if (m_gameHolding != m_physicalHolding) {
+            m_SimFireButton(pl, m_physicalHolding);
         }
+        return;
+    }
 
-        if (!m_enabled) return;
+    if (m_waitTicks > 0) {
+        --m_waitTicks;
+        return;
+    }
 
-        if (m_ticksSinceLastInput < 999) {
-            m_ticksSinceLastInput++;
+    if (m_waitTicks == 0) {
+        // Fire the delayed action, then reconcile to the latest physical state
+        // on the next update. Never retain an old queued opposite action.
+        m_SimFireButton(pl, m_bufferedPush);
+        m_waitTicks = -1;
+        m_queuedOpposite = false;
+        if (m_gameHolding != m_physicalHolding) {
+            m_SimFireButton(pl, m_physicalHolding);
         }
+        return;
+    }
 
-        if (player->m_isShip || (pl->m_gameState.m_isDualMode && pl->m_player2 && pl->m_player2->m_isShip)) {
-            m_waitTicks = -1;
-            m_queuedOpposite = false;
-            if (m_gameHolding != m_physicalHolding) {
-                m_SimFireButton(pl, m_physicalHolding);
-            }
-            return;
+    if (m_waitTicks == -2) {
+        // Compatibility fallback for any queued-opposite state created by
+        // older logic; reconcile to current physical state instead.
+        m_waitTicks = -1;
+        m_queuedOpposite = false;
+        if (m_gameHolding != m_physicalHolding) {
+            m_SimFireButton(pl, m_physicalHolding);
         }
+        return;
+    }
 
-        if (m_waitTicks == 0) {
-            m_SimFireButton(pl, m_bufferedPush);
-            if (m_queuedOpposite) {
-                m_waitTicks = -2;
-                m_queuedOpposite = false;
-            } else {
-                m_waitTicks = -1;
-            }
-        } else if (m_waitTicks > 0) {
-            m_waitTicks--;
-        } else if (m_waitTicks == -2) {
-            m_SimFireButton(pl, !m_bufferedPush);
-            m_queuedOpposite = false;
-            m_waitTicks = -1;
-        } else if (m_waitTicks == -1) {
-            // FAILSAFE: When no buffer is active, guarantee the game's hold state
-            // matches your actual physical mouse button so Wave/Mini Wave can NEVER stay stuck holding!
-            if (m_gameHolding != m_physicalHolding) {
-                m_SimFireButton(pl, m_physicalHolding);
+    if (m_waitTicks == -1 && m_gameHolding != m_physicalHolding) {
+        m_SimFireButton(pl, m_physicalHolding);
+    }
+} {
+
             }
         }
     }
