@@ -23,3 +23,5 @@ This is an experimental Android port. Results may vary depending on device, conf
 Use at your own risk.
 
 made by ai/chat gpt lol
+original mod by:lilWc
+port by:vbnx1
